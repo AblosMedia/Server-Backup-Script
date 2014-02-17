@@ -56,5 +56,4 @@ d.each {
 			end
 		end
 	end
-	
 }
