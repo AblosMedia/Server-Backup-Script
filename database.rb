@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 ### Config: Amazon S3 credentials
-s3bucket = "dev-tremulous"
+s3bucket = "mys3bucket"
 
 ### Config: temporary directory
 output_dir = "/path/to/dir"
