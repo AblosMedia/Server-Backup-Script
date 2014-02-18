@@ -7,7 +7,7 @@ s3bucket = "mys3bucket"
 output_dir = "/path/to/dir"
 
 ### Config: default exclude patters for `tar` command
-excludes = [ ".git" ]
+excludes = [ ".git", "node_modules" ]
 
 ### Config: select directories to backup
 d = Hash.new
@@ -67,14 +67,15 @@ d.each {
 	puts "Creating tarball for #{key}..."
 	filename = "#{val["slug"]}--#{datestamp.strftime("%Y.%m.%d-%H.%M.%S")}"
 	command = "tar -zcf"
+	command = command + " #{output_dir}/#{filename}.tar.gz"
 	excludes = excludes.concat(val['excludes']).uniq
 	excludes.each {
 		|val|
 		command = command + " --exclude='#{val}'"
 	}
-	command = command + " #{output_dir}/#{filename}.tar.gz"
-	command = command + " " + val['directory']
+	command = command + " '#{val['directory']}'"
 	puts command
+	exit
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: Problem creating tarball for #{key}"
