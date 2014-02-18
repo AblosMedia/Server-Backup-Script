@@ -101,7 +101,7 @@ d.each {
 
 	# Remove old S3 backups
 	puts "Removing old backups for #{key} (2 #{period}s ago)..."
-	command = "aws s3 rm --recursive s3://#{s3bucket}/#{val['slug']}_previous_#{period}"
+	command = "aws s3 rm --recursive s3://#{s3bucket}/#{val['slug']}_database_previous_#{period}"
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: couldn't remove old backups for #{key} (2 #{period}s ago)"
@@ -111,7 +111,7 @@ d.each {
 
 	# Move previous backup into previous_ folder
 	puts "Moving existing backup from past #{period} to previous folder..."
-	command = "aws s3 mv --recursive s3://#{s3bucket}/#{val['slug']}_#{period} s3://#{s3bucket}/#{val['slug']}_previous_#{period}"
+	command = "aws s3 mv --recursive s3://#{s3bucket}/#{val['slug']}_database_#{period} s3://#{s3bucket}/#{val['slug']}_database_previous_#{period}"
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: couldn't move existing backup for #{key} (1 #{period}s ago)"
@@ -121,7 +121,7 @@ d.each {
 
 	# Upload new backup
 	puts "Uploading new backup for #{key} (filename: #{filename}.sql.tar.gz)..."
-	command = "aws s3 cp #{output_dir}/#{filename}.sql.tar.gz s3://#{s3bucket}/#{val['slug']}_#{period}/#{filename}.sql.tar.gz"
+	command = "aws s3 cp #{output_dir}/#{filename}.sql.tar.gz s3://#{s3bucket}/#{val['slug']}_database_#{period}/#{filename}.sql.tar.gz"
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: couldn't upload new backup for #{key}"
