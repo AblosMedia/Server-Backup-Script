@@ -80,7 +80,7 @@ d.each {
 
 	# Compress dump
 	puts "Compressing #{key}..."
-	command = "tar czf #{output_dir}/#{filename}.sql.tar.gz #{output_dir}/#{filename}.sql"
+	command = "tar -zcf #{output_dir}/#{filename}.sql.tar.gz #{output_dir}/#{filename}.sql"
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: Problem compressing database dump file for #{key}"
