@@ -68,14 +68,14 @@ d.each {
 	filename = "#{val["slug"]}--#{datestamp.strftime("%Y.%m.%d-%H.%M.%S")}"
 	command = "tar -zcf"
 	command = command + " #{output_dir}/#{filename}.tar.gz"
-	excludes = excludes.concat(val['excludes']).uniq
+	if(val["excludes"])
+		excludes = excludes.concat(val["excludes"]).uniq
+	end
 	excludes.each {
-		|val|
-		command = command + " --exclude='#{val}'"
+		|excl|
+		command = command + " --exclude='#{excl}'"
 	}
-	command = command + " '#{val['directory']}'"
-	puts command
-	exit
+	command = command + " #{val["directory"]}"
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: Problem creating tarball for #{key}"
