@@ -1,21 +1,19 @@
 #!/usr/bin/env ruby
 
-### Config: Amazon S3 credentials
-s3bucket = "mys3bucket"
-
 ### Config: temporary directory
-output_dir = "/path/to/dir"
+output_dir = "/Users/Harrison/Sites/Server-Remote-Uploader-Backup-Script/upload-server/fetched-files"
 
-### Config: default exclude patters for `tar` command
-excludes = [ ".git", "node_modules" ]
-
-### Config: select directories to backup
+### Config: select file dumps to backup
 d = Hash.new
 
-d["MySiteName"] = Hash.new
-d["MySiteName"]["slug"] = "myslug"
-d["MySiteName"]["directory"] = "/path/to/dir"
-d["MySiteName"]["excludes"] = [ "myfirstexcludepattern", "mysecondexcludepattern" ]
+d["FPSS"] = Hash.new
+d["FPSS"]["slug"] = "fpss"
+d["FPSS"]["remote_user"] = "u64583749"
+d["FPSS"]["remote_host"] = "s376755885.websitehome.co.uk"
+d["FPSS"]["remote_dir"] = "/kunden/homepages/4/d376755858/htdocs/sandbox/backup-script-test/fpss"
+
+### Config: Amazon S3 credentials
+s3bucket = "stoneleigh-multi-server-test"
 
 ### END Config
 
@@ -30,14 +28,6 @@ OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
   opts.on('-p', '--period PERIOD', 'Period') { |v| options[:period] = v }
 end.parse!
-
-# Preparation
-puts "Initialising file backup"
-puts "Checking file backup directory exists..."
-success = system("mkdir -p #{output_dir}")
-if(!success)
-	puts ">>>> Error: Problem creating file backup directory <<<<"
-end
 
 # Datestamping
 datestamp = Time.now
@@ -58,32 +48,10 @@ else
 end
 puts "Selected period: #{period}"
 
-# Loop over directories and backup
+# Loop over files and backup
 puts "Starting to backup files..."
 d.each {
 	|key, val|
-
-	# Create tarball from directory
-	puts "Creating tarball for #{key}..."
-	filename = "#{val["slug"]}--#{datestamp.strftime("%Y.%m.%d-%H.%M.%S")}"
-	command = "tar -zcf"
-	command = command + " #{output_dir}/#{filename}.tar.gz"
-	if(val["excludes"])
-		excludes = excludes.concat(val["excludes"]).uniq
-	end
-	excludes.each {
-		|excl|
-		command = command + " --exclude='#{excl}'"
-	}
-	command = command + " #{val["directory"]}"
-	success = system(command)
-	if(!success)
-		puts ">>>> Error: Problem creating tarball for #{key}"
-		puts ">>>>        filename: #{filename}"
-		next
-	end 
-	puts "Finished creating tarball for #{key}"
-
 	# Remove old S3 backups
 	puts "Removing old backups for #{key} (2 #{period}s ago)..."
 	command = "aws s3 rm --recursive s3://#{s3bucket}/#{val['slug']}_files_previous_#{period}"
@@ -104,27 +72,76 @@ d.each {
 		puts "Previous backup moved"
 	end
 
+	# Fetch  backup files from remote server
+	## Check we have a directory to work into
+	success = system("mkdir -p #{output_dir}/#{val['slug']}/files")
+	if(!success)
+		puts ">>>> Error: Problem creating database backup directory <<<<"
+		next
+	end
+	## Find the latest file on the server
+	output = `ssh -t #{val['remote_user']}@#{val['remote_host']} "cd #{val['remote_dir']}/files; ls -t | head -n1"` ;  result=$?.success?
+	if(!result or output.length == 0)
+		puts ">>>> Error: couldn't find any local files ready to upload for #{key}"
+		next
+	else
+		filename = output
+		puts "file is " + filename
+	end
+	## Copy latest file to local directory
+	command = "scp #{val['remote_user']}@#{val['remote_host']}:#{val['remote_dir']}/files/#{filename} #{output_dir}/#{val['slug']}/files/#{filename}"
+	command = command.gsub(/\r/," ")
+	command = command.gsub(/\n/," ")
+	result = system(command)
+	if(!result)
+		puts ">>>> Error: failed to copy backup file from remote for #{key}"
+		next
+	else
+		puts "Copied backup from server"
+	end
+
+	# Find most recent (now local) backup files to upload
+	output = `ls -t #{output_dir}/#{val['slug']}/files | head -n1` ;  result=$?.success?
+	if(!result or output.length == 0)
+		puts ">>>> Error: couldn't find any local files ready to upload for #{key}"
+		next
+	else
+		filename = output
+		puts "file is " + filename
+	end
+
+	# Find most recent (now local) backup files to upload
+	output = `ls -t #{output_dir}/#{val['slug']}/files | head -n1` ;  result=$?.success?
+	if(!result or output.length == 0)
+		puts ">>>> Error: couldn't find any local files ready to upload for #{key}"
+		next
+	else
+		filename = output
+		puts "file is " + filename
+	end
+
 	# Upload new backup
-	puts "Uploading new backup for #{key} (filename: #{filename}.tar.gz)..."
-	command = "aws s3 cp #{output_dir}/#{filename}.tar.gz s3://#{s3bucket}/#{val['slug']}_files_#{period}/#{filename}.tar.gz"
+	puts "Uploading new backup for #{key} (filename: #{filename})..."
+	command = "aws s3 cp #{output_dir}/#{val['slug']}/files/#{filename} s3://#{s3bucket}/#{val['slug']}_files_#{period}/#{filename}"
+	command = command.gsub(/\r/," ")
+	command = command.gsub(/\n/," ")
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: couldn't upload new backup for #{key}"
+		next
 	else
 		puts "Uploaded new backup for #{key}"
 	end
 
 	# Remove local dumps
-	puts "Removing local backup file for #{key} (filename: #{filename}.tar.gz)"
-	command = "rm #{output_dir}/#{filename}.tar.gz"
+	puts "Removing local backup file for #{key} (filename: #{filename})"
+	command = "rm #{output_dir}/#{val['slug']}/files/#{filename}"
 	success = system(command)
 	if(!success)
-		puts ">>>> Error: couldn't remove local backup file for #{key} (filename: #{filename}.tar.gz)"
+		puts ">>>> Error: couldn't remove local backup file for #{key} (filename: #{filename})"
+		next
 	else
-		puts "Finished removing local backup file #{key} (filename: #{filename}.tar.gz)"
+		puts "Finished removing local backup file #{key} (filename: #{filename})"
 	end
 
 }
-
-# Finish
-puts "Files backup complete."

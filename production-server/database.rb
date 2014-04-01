@@ -1,17 +1,17 @@
 #!/usr/bin/env ruby
 
 ### Config: temporary directory
-output_dir = "/path/to/dir"
+output_dir = "/kunden/homepages/4/d376755858/htdocs/sandbox/backup-script-test"
 
 ### Config: select databases to backup
 d = Hash.new
 
-d["MySiteName"] = Hash.new
-d["MySiteName"]["slug"] = "myslug"
-d["MySiteName"]["host"] = "myhost"
-d["MySiteName"]["name"] = "myname"
-d["MySiteName"]["user"] = "myuser"
-d["MySiteName"]["pass"] = "mypass"
+d["FPSS"] = Hash.new
+d["FPSS"]["slug"] = "fpss"
+d["FPSS"]["host"] = "db463948363.db.1and1.com"
+d["FPSS"]["name"] = "db463948363"
+d["FPSS"]["user"] = "dbo463948363"
+d["FPSS"]["pass"] = "hom4gaig"
 
 ### END Config
 
@@ -26,14 +26,6 @@ OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
   opts.on('-p', '--period PERIOD', 'Period') { |v| options[:period] = v }
 end.parse!
-
-# Preparation
-puts "Initialising database backup"
-puts "Checking database backup directory exists..."
-success = system("mkdir -p #{output_dir}")
-if(!success)
-	puts ">>>> Error: Problem creating database backup directory <<<<"
-end
 
 # Datestamping
 datestamp = Time.now
@@ -59,10 +51,17 @@ puts "Starting to backup databases..."
 d.each {
 	|key, val|
 
+	# Preparation
+	current_output_dir = "#{output_dir}/#{val['slug']}/db"
+	success = system("mkdir -p #{current_output_dir}")
+	if(!success)
+		puts ">>>> Error: Problem creating database backup directory <<<<"
+	end
+
 	# Dump database file
 	puts "Dumping #{key} (database name: #{val["name"]})..."
-	filename = "#{val["slug"]}--#{datestamp.strftime("%Y.%m.%d-%H.%M.%S")}"
-	command = "mysqldump --no-create-db=true -h #{val["host"]} -u #{val["user"]} -p#{val["pass"]} #{val["name"]} > #{output_dir}/#{filename}.sql"
+	filename = "#{val["slug"]}--dbs--#{datestamp.strftime("%Y.%m.%d-%H.%M.%S")}"
+	command = "mysqldump --no-create-db=true -h #{val["host"]} -u #{val["user"]} -p#{val["pass"]} #{val["name"]} > #{current_output_dir}/#{filename}.sql"
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: Problem backing up database for #{key}"
@@ -77,7 +76,7 @@ d.each {
 
 	# Compress dump
 	puts "Compressing #{key}..."
-	command = "tar -zcf #{output_dir}/#{filename}.sql.tar.gz #{output_dir}/#{filename}.sql"
+	command = "tar -zcf #{current_output_dir}/#{filename}.sql.tar.gz #{current_output_dir}/#{filename}.sql"
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: Problem compressing database dump file for #{key}"
@@ -88,7 +87,7 @@ d.each {
 
 	# Remove un-compressed dump
 	puts "Removing un-compressed #{key}..."
-	command = "rm #{output_dir}/#{filename}.sql"
+	command = "rm #{current_output_dir}/#{filename}.sql"
 	success = system(command)
 	if(!success)
 		puts ">>>> Error: Problem removing un-compressed database dump file for #{key}"

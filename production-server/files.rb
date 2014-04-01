@@ -1,10 +1,7 @@
 #!/usr/bin/env ruby
 
-### Config: Amazon S3 credentials
-s3bucket = "mys3bucket"
-
 ### Config: temporary directory
-output_dir = "/path/to/dir"
+output_dir = "/kunden/homepages/4/d376755858/htdocs/sandbox/backup-script-test"
 
 ### Config: default exclude patters for `tar` command
 excludes = [ ".git", "node_modules" ]
@@ -12,10 +9,10 @@ excludes = [ ".git", "node_modules" ]
 ### Config: select directories to backup
 d = Hash.new
 
-d["MySiteName"] = Hash.new
-d["MySiteName"]["slug"] = "myslug"
-d["MySiteName"]["directory"] = "/path/to/dir"
-d["MySiteName"]["excludes"] = [ "myfirstexcludepattern", "mysecondexcludepattern" ]
+d["FPSS"] = Hash.new
+d["FPSS"]["slug"] = "fpss"
+d["FPSS"]["directory"] = "/kunden/homepages/4/d376755858/htdocs/sites/arc-booking-system"
+d["FPSS"]["excludes"] = [ "dbs" ]
 
 ### END Config
 
@@ -63,11 +60,18 @@ puts "Starting to backup files..."
 d.each {
 	|key, val|
 
+	# Preparation
+	current_output_dir = "#{output_dir}/#{val['slug']}/files"
+	success = system("mkdir -p #{current_output_dir}")
+	if(!success)
+		puts ">>>> Error: Problem creating database backup directory <<<<"
+	end
+
 	# Create tarball from directory
 	puts "Creating tarball for #{key}..."
-	filename = "#{val["slug"]}--#{datestamp.strftime("%Y.%m.%d-%H.%M.%S")}"
+	filename = "#{val["slug"]}--files--#{datestamp.strftime("%Y.%m.%d-%H.%M.%S")}"
 	command = "tar -zcf"
-	command = command + " #{output_dir}/#{filename}.tar.gz"
+	command = command + " #{current_output_dir}/#{filename}.tar.gz"
 	if(val["excludes"])
 		excludes = excludes.concat(val["excludes"]).uniq
 	end
@@ -83,46 +87,6 @@ d.each {
 		next
 	end 
 	puts "Finished creating tarball for #{key}"
-
-	# Remove old S3 backups
-	puts "Removing old backups for #{key} (2 #{period}s ago)..."
-	command = "aws s3 rm --recursive s3://#{s3bucket}/#{val['slug']}_files_previous_#{period}"
-	success = system(command)
-	if(!success)
-		puts ">>>> Error: couldn't remove old backups for #{key} (2 #{period}s ago)"
-	else
-		puts "Old backup removed"
-	end
-
-	# Move previous backup into previous_ folder
-	puts "Moving existing backup from past #{period} to previous folder..."
-	command = "aws s3 mv --recursive s3://#{s3bucket}/#{val['slug']}_files_#{period} s3://#{s3bucket}/#{val['slug']}_files_previous_#{period}"
-	success = system(command)
-	if(!success)
-		puts ">>>> Error: couldn't move existing backup for #{key} (1 #{period}s ago)"
-	else
-		puts "Previous backup moved"
-	end
-
-	# Upload new backup
-	puts "Uploading new backup for #{key} (filename: #{filename}.tar.gz)..."
-	command = "aws s3 cp #{output_dir}/#{filename}.tar.gz s3://#{s3bucket}/#{val['slug']}_files_#{period}/#{filename}.tar.gz"
-	success = system(command)
-	if(!success)
-		puts ">>>> Error: couldn't upload new backup for #{key}"
-	else
-		puts "Uploaded new backup for #{key}"
-	end
-
-	# Remove local dumps
-	puts "Removing local backup file for #{key} (filename: #{filename}.tar.gz)"
-	command = "rm #{output_dir}/#{filename}.tar.gz"
-	success = system(command)
-	if(!success)
-		puts ">>>> Error: couldn't remove local backup file for #{key} (filename: #{filename}.tar.gz)"
-	else
-		puts "Finished removing local backup file #{key} (filename: #{filename}.tar.gz)"
-	end
 
 }
 
