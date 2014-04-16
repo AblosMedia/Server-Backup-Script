@@ -67,6 +67,13 @@ d.each {
 		puts ">>>> Error: Problem creating database backup directory <<<<"
 	end
 
+	# Remove old backup files
+	puts "Removing old backup files..."
+	success = system("rm -r #{output_dir}/#{val['slug']}/files/*")
+	if(!success)
+		puts ">>>> Error: Problem removing old backup files <<<<"
+	end
+
 	# Create tarball from directory
 	puts "Creating tarball for #{key}..."
 	filename = "#{val["slug"]}--files--#{datestamp.strftime("%Y.%m.%d-%H.%M.%S")}"
